@@ -3,6 +3,7 @@ package gee
 import (
 	"log"
 	"net/http"
+	"strings"
 )
 
 //定义函数类型，使实例化了的此类型函数都能加载
@@ -22,6 +23,12 @@ type RouterGroup struct {
 	gee         *Gee         // all groups share a Engine instance
 }
 
+func Default() *Gee {
+	engine := New()
+	engine.Use(Logger(), Recovery())
+	return engine
+}
+
 func New() *Gee {
 	gee := &Gee{router: NewRouter()}
 	gee.RouterGroup = &RouterGroup{gee: gee}
@@ -39,6 +46,10 @@ func (r *RouterGroup) Group(prefix string) *RouterGroup {
 	}
 	gee.groups = append(gee.groups, newGroup)
 	return newGroup
+}
+
+func (group *RouterGroup) Use(middlewares ...HandleFunc) {
+	group.middleWares = append(group.middleWares, middlewares...)
 }
 
 func (group *RouterGroup) addRoute(method string, comp string, handler HandleFunc) {
@@ -76,6 +87,14 @@ func (g *Gee) Run(addr string) error {
 
 //根据http req执行注册的路由
 func (g *Gee) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	var middleWares []HandleFunc
+	for _, group := range g.groups {
+		if strings.HasPrefix(req.URL.Path, group.prefix) {
+			middleWares = append(middleWares, group.middleWares...)
+		}
+	}
+
 	c := NewContext(w, req)
+	c.handlers = middleWares
 	g.router.handle(c)
 }

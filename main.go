@@ -8,7 +8,7 @@ import (
 
 func main() {
 	defer fmt.Println("stop running")
-	r := gee.New()
+	r := gee.Default()
 	r.GET("/index", func(c *gee.Context) {
 		c.HTML(http.StatusOK, "<h1>Index Page</h1>")
 	})
